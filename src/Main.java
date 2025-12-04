@@ -3,6 +3,8 @@ import java.util.Scanner;
 
 public class Main {
 
+    private static final Scanner scanner = new Scanner(System.in);
+
     public static Account findAccount(ArrayList<Account> accountsList, String agency, String accountNumber) {
         for (Account c : accountsList) {
             if (c.agency.equals(agency) && c.accountNumber.equals(accountNumber)) {
@@ -12,221 +14,335 @@ public class Main {
         return null;
     }
 
+    private static boolean askRetryOrMenu() {
+        System.out.println("\nDigite");
+        System.out.println("1. Tentar novamente");
+        System.out.println("0. Voltar ao menu principal");
+        System.out.println("Opção: ");
+
+        String op = scanner.nextLine();
+        return op.equals("1");
+    }
+
+    private static String readValidated(String message, String regex, String errorMessage) {
+        while (true) {
+            System.out.println(message);
+            String input = scanner.nextLine();
+
+            if (input.equalsIgnoreCase("0")) {
+                return null;
+            }
+
+            if (input.matches(regex)) {
+                return input;
+            }
+
+            System.out.println(errorMessage);
+            if (!askRetryOrMenu()) {
+                return null;
+            }
+        }
+    }
+
+    private static double readValidDouble(String message) {
+        while (true) {
+            try {
+                System.out.println(message);
+                String input = scanner.nextLine();
+
+                double value;
+                try {
+                    value = Double.parseDouble(input.replace(",", "."));
+                } catch (Exception e) {
+                    if (input.equals("0")) {
+                        System.out.println("O valor deve ser maior que 0.");
+                        if (!askRetryOrMenu()) {
+                            return -1;
+                        }
+                        continue;
+                    }
+                    System.out.println("Valor inválido!");
+                    if (!askRetryOrMenu()) {
+                        return -1;
+                    }
+                    continue;
+                }
+
+                if (value > 0) {
+                    return value;
+                }
+                System.out.println("O valor deve ser maior que 0.");
+                if (!askRetryOrMenu()) {
+                    return -1;
+                }
+            } catch (Exception e) {
+                System.out.println("Valor inválido");
+                if (!askRetryOrMenu()) {
+                    return -1;
+                }
+            }
+        }
+    }
+
     public static void main(String[] args) {
 
         System.out.println("Aplicação Juniores iniciada com sucesso\n");
 
         ArrayList<Account> accountsList = new ArrayList<>();
 
-        Scanner scanner = new Scanner(System.in);
+        int opcao = 1;
 
-        String menu = """
-                \nBem vindo, escolha uma das opções:
-                
+        while (opcao != 0) {
+
+            System.out.println("""
+                \n====MENU PRINCIPAL====:
+
                 1. Criar conta
                 2. Visualizar todas as contas
                 3. Excluir uma conta
                 4. Fazer uma transferência
                 5. Mostrar extrato
                 0. Sair.
-                """;
+                """);
 
-
-        int opcao = 1;
-
-        while (opcao != 0) {
-            System.out.println(menu);
             System.out.println("Escolha uma opção: ");
-            opcao = scanner.nextInt();
-            scanner.nextLine();
+
+            try {
+                opcao = Integer.parseInt(scanner.nextLine());
+            } catch (Exception e) {
+                System.out.println("Opção Inválida!\n");
+                continue;
+            }
 
             switch (opcao) {
                 case 1 -> {
+                    while (true) {
 
-                    System.out.println("Digite seu nome: ");
-                    String name = scanner.nextLine();
+                        String name = readValidated(
+                                "Digite seu nome completo (Ex: Rafael Borges) ou 0 para voltar ao menu principal",
+                                "^[A-Z][a-z]+ [A-Z][a-z]+$",
+                                "Nome deve conter Nome e Sobrenome, iniciando com letras maiúsculas."
+                        );
+                        if (name == null) break;
 
-                    System.out.println("Digite seu cpf (somente números): ");
-                    String cpfTyped = scanner.nextLine();
+                        String cpf = readValidated(
+                                "Digite seu CPF (somente números) ou 0 para voltar ao menu principal",
+                                "^\\d{11}$",
+                                "CPF inválido! Deve conter exatamente 11 dígitos numéricos."
+                        );
+                        if (cpf == null) break;
 
-                    while (!cpfTyped.matches("^\\d{11}$")) {
-                        System.out.println("CPF inválido!  Digite exatamente 11 números (sem pontos ou traços).");
-                        System.out.println("Digite novamente: ");
-                        cpfTyped = scanner.nextLine();
+                        boolean cpfExists = false;
+                        for (Account account : accountsList) {
+                            if (account.cpf.equals(cpf)) {
+                                cpfExists = true;
+                                break;
+                            }
+                        }
+                        if (cpfExists) {
+                            if (!askRetryOrMenu()) break;
+                            else continue;
+                        }
+
+                        String state = readValidated(
+                                "Digite a sigla do seu estado (ex: SP) ou 0 para voltar ao menu principal",
+                                "^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$",
+                                "Sigla de estado inválida! Use siglas válidas do Brasil (ex: SP, RJ, MG)."
+                        );
+                        if (state == null) break;
+
+                        String agency = readValidated(
+                                "Digite o número da agência (ex: 123) ou 0 para voltar ao menu principal",
+                                "^\\d{3}$",
+                                "Número de agência inválido! Deve conter exatamente 3 dígitos numéricos."
+                        );
+                        if (agency == null) break;
+
+                        String accNumber = readValidated(
+                                "Digite o número da conta (ex: 1234) ou 0 para voltar ao menu principal",
+                                "^\\d{4}$",
+                                "Número de conta inválido! Deve conter exatamente 4 dígitos numéricos."
+                        );
+                        if (accNumber == null) break;
+
+                        Account existingAccount = findAccount(accountsList, agency, accNumber);
+                        if (existingAccount != null) {
+                            System.out.println("Erro! Já existe uma conta com essa agência e número de conta.");
+                            if (!askRetryOrMenu()) break;
+                            else continue;
+                        }
+
+                        double balance = readValidDouble(
+                                "Digite o saldo inicial (maior que 0,00) ou 0 para voltar ao menu principal"
+                        );
+                        if (balance <= 0) continue;
+
+                        Account account = new Account(name, cpf, agency, accNumber, balance, state);
+
+                        accountsList.add(account);
+
+                        System.out.println("Conta criada com sucesso!\n");
+                        break;
                     }
-
-                    System.out.println("Digite a agencia: ");
-                    String agencyTyped = scanner.nextLine();
-
-                    while (!agencyTyped.matches("^\\d{3}$")) {
-                        System.out.println("Agência inválida! O número da agencia deve conter 3 números");
-                        System.out.println("Digite novamente: ");
-                        agencyTyped = scanner.nextLine();
-                    }
-
-                    System.out.println("Digite o número da conta");
-                    String accountNumber = scanner.nextLine();
-
-                    while (!accountNumber.matches("^\\d{4}$")) {
-                        System.out.println("Número da conta inválido! O número da conta deve conter 4 números (sem pontos ou traços).");
-                        System.out.println("Digite novamente: ");
-                        accountNumber = scanner.nextLine();
-                    }
-
-
-                    System.out.println("Digite o saldo da conta");
-                    double initialBalance = scanner.nextDouble();
-
-                    while (initialBalance <= 0) {
-                        System.out.println("O saldo inicial deve ser maior que 0");
-                        initialBalance = scanner.nextDouble();
-                        scanner.nextLine();
-                    }
-
-                    Account account = new Account(name, cpfTyped, agencyTyped, accountNumber, initialBalance);
-
-                    accountsList.add(account);
-
-                    System.out.println("Conta criada com sucesso!\n");
                 }
 
-
                 case 2 -> {
-
                     if (accountsList.isEmpty()) {
                         System.out.println("Nenhuma conta cadastrada.\n");
                     } else {
                         System.out.println("\n---Contas Cadastradas---");
-                        for (int i = 0; i < accountsList.size(); i++) {
-                            Account c = accountsList.get(i);
+                        for (Account c : accountsList) {
                             System.out.printf(
-                                    "%d. Nome: %s | CPF: %s | Agência: %s | Número da conta: %s | Saldo: R$ %.2f%n", i + 1, c.name, c.cpf, c.agency, c.accountNumber, c.balance);
-
+                                    " Nome: %s | CPF: %s | Agência: %s | Número da conta: %s | Saldo: R$ %.2f%n",
+                                    c.name, c.cpf, c.agency, c.accountNumber, c.balance);
                         }
                         System.out.println("---------------\n");
                     }
-
-
                 }
 
                 case 3 -> {
-
                     if (accountsList.isEmpty()) {
-                        System.out.println("Erro! Nenhuma conta para exlcuir\n");
+                        System.out.println("Erro! Nenhuma conta para excluir\n");
                         break;
                     }
 
-                    System.out.println("Digite o CPF da conta que deseja excluir");
-                    String cpfTyped = scanner.nextLine();
+                    String inputRemove = readValidated(
+                            "Digite o número da agência e conta que deseja remover (somente números) ou 0 para voltar ao menu principal",
+                            "^\\d{3} \\d{4}$",
+                            "Formato inválido! Deve ser no formato: 123 4567"
+                    );
+                    if (inputRemove == null) continue;
 
-                    Account accountToRemove = null;
+                    String[] removeParts = inputRemove.split(" ");
+                    Account accRemove = findAccount(accountsList, removeParts[0], removeParts[1]);
 
-                    for (Account account : accountsList) {
-                        if (account.cpf.equals(cpfTyped)) {
-                            accountToRemove = account;
-                            break;
-                        }
-                    }
-
-                    if (accountToRemove != null) {
-                        accountsList.remove(accountToRemove);
-                        System.out.println("Conta removida com sucesso!\n");
+                    if (accRemove == null) {
+                        System.out.println("Conta não encontrada.\n");
                     } else {
-                        System.out.println("Nenhuma conta encontrada com o CPF informado.\n");
+                        accountsList.remove(accRemove);
+                        System.out.println("Conta removida com sucesso!\n");
                     }
                 }
 
                 case 4 -> {
-                    //Transferencia
-
                     if (accountsList.isEmpty()) {
                         System.out.println("Erro! Ainda não possui nenhuma conta criada\n");
                         break;
                     }
 
+                    String inputDebit = readValidated(
+                            "Digite o número da agência e conta de débito (somente números) ou 0 para voltar ao menu principal",
+                            "^\\d{3} \\d{4}$",
+                            "Formato inválido! Deve ser no formato: 123 4567"
+                    );
+                    if (inputDebit == null) continue;
 
-                    System.out.println("Digite a agencia e número da conta de débito (ex: 123 4567):");
-                    String inputDebit = scanner.nextLine();
                     String[] debitParts = inputDebit.split(" ");
-                    String debitAgency = debitParts[0];
-                    String debitAccount = debitParts[1];
-
-                    Account accountToDebit = findAccount(accountsList, debitAgency, debitAccount);
+                    Account accountToDebit = findAccount(accountsList, debitParts[0], debitParts[1]);
 
                     if (accountToDebit == null) {
                         System.out.println("Conta de débito não encontrada");
-                        break;
+                        continue;
                     }
 
-                    System.out.println("Digite a agencia e número da conta de crédito (ex: 123 4567):");
-                    String inputCredit = scanner.nextLine();
-                    String[] creditParts = inputCredit.split(" ");
-                    String creditAgency = creditParts[0];
-                    String creditAccount = creditParts[1];
+                    String inputCredit = readValidated(
+                            "Digite o número da agência e conta de crédito (somente números) ou 0 para voltar ao menu principal",
+                            "^\\d{3} \\d{4}$",
+                            "Formato inválido! Deve ser no formato: 123 4567"
+                    );
+                    if (inputCredit == null) continue;
 
-                    Account accountToCredit = findAccount(accountsList, creditAgency, creditAccount);
+                    String[] creditParts = inputCredit.split(" ");
+                    Account accountToCredit = findAccount(accountsList, creditParts[0], creditParts[1]);
 
                     if (accountToCredit == null) {
                         System.out.println("Conta de crédito não encontrada");
                         break;
                     }
 
-                    System.out.println("Digite o valor da transferência: ");
-                    double transferValue = scanner.nextDouble();
-                    scanner.nextLine();
-
-                    String valueFormat = String.format("%.2f", transferValue);
-
-
-                    if (transferValue <= 0) {
-                        System.out.println("Saldo insuficiente\n");
-                    } else if (transferValue > accountToDebit.balance) {
-                        System.out.println("O valor digitado é maior que o saldo da conta\n");
-                    } else {
-                        accountToDebit.balance = accountToDebit.balance - transferValue;
-                        accountToDebit.transactions.add(
-                                "Transferência enviada de R$ " + valueFormat + " para Agência " + creditAgency + " Conta " +creditAccount);
-                        accountToCredit.balance = accountToCredit.balance + transferValue;
-                        accountToCredit.transactions.add(
-                                "Transferência recebida: R$ " + valueFormat + " de Agência " + debitAgency + " Conta " +debitAccount);
-                        System.out.println("Transferencia realizada com sucesso!");
+                    if (accountToDebit.agency.equals(accountToCredit.agency) &&
+                            accountToDebit.accountNumber.equals(accountToCredit.accountNumber)) {
+                        System.out.println("Erro! Não é possível transferir para a mesma conta.\n");
+                        continue;
                     }
 
+                    double transferValue = readValidDouble(
+                            "Digite o valor da transferência (maior que 0,00)"
+                    );
+                    if (transferValue <= 0) continue;
+
+                    if (transferValue > accountToDebit.balance) {
+                        System.out.println("Saldo insuficiente para realizar a transferência.\n");
+                        continue;
+                    }
+
+                    accountToDebit.balance -= transferValue;
+                    accountToCredit.balance += transferValue;
+
+                    String descOut = "Transferência enviada de R$ " + String.format("%.2f", transferValue) +
+                            " para Agência " + accountToCredit.agency + " Conta " + accountToCredit.accountNumber;
+                    String descIn = "Transferência recebida: R$ " + String.format("%.2f", transferValue) +
+                            " de Agência " + accountToDebit.agency + " Conta " + accountToDebit.accountNumber;
+
+                    Transaction out = new Transaction(
+                            "TRANSFER_SENT",
+                            transferValue,
+                            null,
+                            descOut,
+                            accountToCredit.agency,
+                            accountToCredit.accountNumber,
+                            accountToDebit.getZoneId()
+                    );
+                    Transaction in = new Transaction(
+                            "TRANSFER_RECEIVED",
+                            transferValue,
+                            null,
+                            descIn,
+                            accountToDebit.agency,
+                            accountToDebit.accountNumber,
+                            accountToCredit.getZoneId()
+                    );
+
+                    accountToDebit.addTransaction(out);
+                    accountToCredit.addTransaction(in);
+
+                    System.out.println("Transferencia realizada com sucesso!");
                 }
 
                 case 5 -> {
-                    //Extrato
-                    System.out.println("Digite o número de Agência e conta que deseja visualizar o Extrato ex: (123 1234):");
-                    String bankStatement = scanner.nextLine();
-                    String[] bankStatementParts = bankStatement.split(" ");
-                    String agency = bankStatementParts[0];
-                    String accountN = bankStatementParts[1];
+                    if (accountsList.isEmpty()) {
+                        System.out.println("Erro! Ainda não possui nenhuma conta criada\n");
+                        break;
+                    }
 
-                    Account account = findAccount(accountsList, agency, accountN);
+                    String bankStatementInput = readValidated(
+                            "Digite o número da agência e conta para ver o extrato (somente números) ou 0 para voltar ao menu principal",
+                            "^\\d{3} \\d{4}$",
+                            "Formato inválido! Deve ser no formato: 123 4567"
+                    );
+                    if (bankStatementInput == null) continue;
+
+                    String [] bankstatementParts = bankStatementInput.split(" ");
+                    Account account = findAccount(accountsList, bankstatementParts[0], bankstatementParts[1]);
 
                     if (account == null) {
                         System.out.println("Conta não encontrada");
                     } else {
                         System.out.printf(
-                                "Nome: %s | CPF: %s | Agência: %s | Número da conta: %s | Saldo: R$ %.2f%n\n", account.name, account.cpf, account.agency, account.accountNumber, account.balance);
-                        for (String t : account.transactions) {
+                                "Nome: %s | CPF: %s | Agência: %s | Número da conta: %s | Saldo: R$ %.2f%n\n",
+                                account.name, account.cpf, account.agency, account.accountNumber, account.balance);
+                        for (Transaction t : account.transactions) {
                             System.out.println(t);
                         }
                     }
-
                 }
 
-                case 0 -> {
-                    System.out.println("Encerrando aplicação");
-                }
+                case 0 -> System.out.println("Encerrando aplicação");
 
-                default -> {
-                    System.out.println("Opção inválida! Tente novamente.\n");
-                }
-
+                default -> System.out.println("Opção inválida! Tente novamente.\n");
             }
-
         }
+
         scanner.close();
     }
 }
